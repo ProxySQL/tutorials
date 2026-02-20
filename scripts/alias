@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+alias up='docker compose up -d'
+alias build='docker compose build'
+alias down='docker compose down -v'
+alias containers='docker compose ps'
+alias logs='docker compose logs'
+alias services='docker-compose config --services'
+
+alias sql='psql "postgresql://${DB_USER}:${DB_PASSWD}@localhost:${DB_PORT}/${DB_NAME}" -v PROMPT1="%M:%> %n@%/ %R%# "'
+alias sqladmin='psql "postgresql://${PROXYSQL_ADMIN_USER}:${PROXYSQL_ADMIN_PASSWD}@localhost:${PROXYSQL_ADMIN_PORT}" -v PROMPT1="%M:%> %n@%/ %R%# "'
+alias sql-version='psql postgresql://${DB_USER}:${DB_PASSWD}@localhost:${DB_PORT}/${DB_NAME} -c "SELECT version();"'
