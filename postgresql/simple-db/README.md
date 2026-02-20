@@ -1,4 +1,4 @@
-# Tutorial 1 - Demonstrate Single PostgreSQL environment
+# Demonstrate Single PostgreSQL environment
 
 ## Tutorial Outcomes
 1. Validate your Docker setup
