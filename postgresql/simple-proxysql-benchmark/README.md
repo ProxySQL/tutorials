@@ -1,7 +1,7 @@
 # ProxySQL Tutorial 1 - Demonstrate a benchmark using ProxySQL
 
 ## Tutorial Outcomes
-1. Launch a benchmark with a PostgreSQL instance [Tutorial 2](../tutorial2)).
+1. Launch a benchmark with a PostgreSQL instance.
 2. Demonstrate a failing test with connection exhaustion using PostgreSQL.
 3. Launch a benchmark with ProxySQL instance.
 4. Demonstrate connection pooling with ProxySQL supporting the failing test. 
@@ -43,7 +43,7 @@ NOTE: You may need to run `Set-ExecutionPolicy RemoteSigned` once to allow Power
 The PostgreSQL instance is configured with a maximum of 12 connections. We can simulate an application that runs with a larger number of connections with.
 
 ```
-$ docker exec -e THREADS=20 sysbench /usr/local/bin/benchmark.sh run
+$ docker exec -e THREADS=20 ${SYSBENCH_CONTAINER_NAME} /usr/local/bin/benchmark.sh run
 ```
 
 This will fail with the following command:
@@ -67,7 +67,7 @@ $ ./run-with-proxy.sh
 The following script will monitor the current connections in the database. You can run this in a separate window and run benchmarks to see the impact.
 
 ```
-$ docker exec sysbench /usr/local/bin/monitor-db-connections.sh
+$ docker exec ${SYSBENCH_CONTAINER_NAME} /usr/local/bin/monitor-db-connections.sh
 ```
 
 By default you should just see 1 connection (the monitoring)
@@ -80,8 +80,8 @@ Time                 | Total Conn | Active | Idle | Idle in Txn | Active Queries
 
 If you run in a separate terminal the following 3 tests you will see the impact on connections and the benefits of ProxySQL.
 ```
-$ docker exec -e THREADS=4 sysbench /usr/local/bin/benchmark.sh run
-$ docker exec -e THREADS=10 sysbench /usr/local/bin/benchmark.sh run
+$ docker exec -e THREADS=4 ${SYSBENCH_CONTAINER_NAME} /usr/local/bin/benchmark.sh run
+$ docker exec -e THREADS=10 ${SYSBENCH_CONTAINER_NAME} /usr/local/bin/benchmark.sh run
 $ THREADS=20 ./run-with-proxy.sql
 ```
 
@@ -123,7 +123,7 @@ When defining a `pgsql_servers` we define the primary hostgroup in ProxySQL conf
 
 ```
 
-$ docker exec -it sysbench psql postgres://radmin:radmin@localhost:6132
+$ docker exec -it proxysql psql postgres://radmin:radmin@localhost:6132
 
 radmin=# SELECT * FROM pgsql_servers;
  hostgroup_id | hostname | port | status | weight | compression | max_connections | max_replication_lag | use_ssl | max_latency_
