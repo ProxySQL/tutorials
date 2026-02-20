@@ -1,0 +1,59 @@
+services:
+  postgresql18:
+    image: postgres:18
+    container_name: primary
+    environment:
+      POSTGRES_USER:     ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWD}
+      POSTGRES_DB:       ${DB_NAME}
+    command: >
+      postgres
+      -c max_connections=12
+      -c shared_buffers=256MB
+      -c work_mem=4MB
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    networks:
+      - proxysql-net
+    volumes:
+      - primary-data:/var/lib/postgresql
+      - ./sql/init-primary.sql:/docker-entrypoint-initdb.d/00init.sql
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout:  5s
+      retries:  5
+
+  proxysql:
+    build: .
+    container_name: proxysql
+    depends_on:
+      postgresql18:
+        condition: service_healthy
+    environment:
+      DB_USER:   ${DB_USER}
+      DB_PASSWD: ${DB_PASSWD}
+      DB_NAME:   ${DB_NAME}
+      DB_HOST:   localhost
+      DB_PORT:   ${PROXYSQL_DB_PORT:-6132}
+      PROXY_ADMIN_USER:   admin
+      PROXY_ADMIN_PASSWD: admin
+    ports:
+      - "${PROXYSQL_DB_PORT}:6133"
+      - "${PROXYSQL_ADMIN_PORT}:6132"
+    networks:
+      - proxysql-net
+    volumes:
+      - ./cnf/proxysql.cnf:/etc/proxysql.cnf
+      - ./scripts/benchmark.sh:/usr/local/bin/benchmark.sh
+      - ./scripts/monitor-db-connections.sh:/usr/local/bin/monitor-db-connections.sh
+      - proxysql-data:/var/lib/proxysql
+
+volumes:
+  primary-data:
+  proxysql-data:
+
+networks:
+  proxysql-net:
+    driver: bridge
