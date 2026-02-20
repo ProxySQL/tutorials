@@ -8,7 +8,7 @@ echo "Verifying docker processes"
 sleep 5
 docker compose ps
 
-echo "Validating PostgreSQL access"
+echo "Validating Database access"
 docker exec primary mysql -u demo -pchangeme -e "SELECT VERSION()"
 
 echo "To test using the container run"

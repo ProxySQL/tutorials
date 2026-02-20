@@ -44,7 +44,7 @@ Launching docker container(s)
 Verifying docker processes
 NAME      IMAGE       COMMAND                  SERVICE   CREATED         STATUS                            PORTS
 primary   mysql:8.4   "docker-entrypoint.s…"   primary   6 seconds ago   Up 5 seconds (health: starting)   0.0.0.0:3306->3306/tcp, [::]:3306->3306/tcp, 33060/tcp
-Validating PostgreSQL access
+Validating Database access
 mysql: [Warning] Using a password on the command line interface can be insecure.
 VERSION()
 8.4.8

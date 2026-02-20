@@ -5,7 +5,7 @@ Write-Host "Verifying docker processes"
 Start-Sleep -Seconds 5
 docker compose ps
 
-Write-Host "Validating PostgreSQL access"
+Write-Host "Validating Database access"
 docker exec primary mysql -u demo -pchangeme -e "SELECT VERSION()"
 
 Write-Host ""

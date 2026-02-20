@@ -6,7 +6,7 @@ echo Verifying docker processes
 timeout /t 5 /nobreak >nul
 docker compose ps
 
-echo Validating PostgreSQL access
+echo Validating Database access
 docker exec primary mysql -u demo -pchangeme -e "SELECT VERSION()"
 
 echo.
