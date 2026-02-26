@@ -21,7 +21,7 @@ TIME=${TIME:-10}
 REPORT_INTERVAL=${REPORT_INTERVAL:-1}
 TEST_TYPE=${TEST_TYPE:-oltp_read_write}
 RATE=${RATE:-0}
-SKIP_TRX=${SKIP_TRX:=off}
+SKIP_TRX=${SKIP_TRX:-off}
 
 # Base sysbench command
 if [ -f /.dockerenv ]; then
