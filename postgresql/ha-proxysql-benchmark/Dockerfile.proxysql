@@ -1,0 +1,27 @@
+FROM arm64v8/ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && \
+    apt-get install -y postgresql-client mysql-client curl dstat supervisor \
+    && apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install ProxySQL from official repository
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends lsb-release wget apt-transport-https ca-certificates gnupg && \
+    wget -O - 'https://repo.proxysql.com/ProxySQL/proxysql-3.0.x/repo_pub_key' | apt-key add - && \
+    echo "deb https://repo.proxysql.com/ProxySQL/proxysql-3.0.x/$(lsb_release -sc)/ ./" | tee /etc/apt/sources.list.d/proxysql.list && \
+    apt-get update && \
+    apt-get install -y proxysql && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Create ProxySQL data directory
+RUN mkdir -p /var/lib/proxysql && \
+    chown -R proxysql:proxysql /var/lib/proxysql
+
+# Configure supervisor to run ProxySQL
+COPY cnf/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

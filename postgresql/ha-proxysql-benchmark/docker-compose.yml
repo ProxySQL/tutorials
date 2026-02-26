@@ -1,0 +1,218 @@
+services:
+  primary:
+    image: postgres:17
+    user: postgres
+    restart: always
+    container_name: primary
+    environment:
+      POSTGRES_USER:     ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWD}
+      POSTGRES_DB:       ${DB_NAME}
+      POSTGRES_HOST_AUTH_METHOD: "scram-sha-256\nhost replication all 0.0.0.0/0 scram-sha-256"
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    volumes:
+      - primary-data:/var/lib/postgresql
+      - ./sql/init-primary.sql:/docker-entrypoint-initdb.d/00init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - 15432:5432
+    networks:
+      pg-demo:
+        ipv4_address: 172.113.0.100
+    command: >
+      postgres
+      -c wal_level=replica
+      -c hot_standby=on
+      -c max_wal_senders=10
+      -c max_replication_slots=10
+      -c hot_standby_feedback=on
+      -c max_connections=50
+      -c shared_buffers=256MB
+      -c work_mem=4MB
+
+  replica1:
+    image: postgres:17
+    user: postgres
+    restart: always
+    container_name: replica1
+    environment:
+      PGUSER: repluser
+      PGPASSWORD: replpass
+    volumes:
+      - replica1-data:/var/lib/postgresql/
+    healthcheck:
+      interval: 10s
+      test: ["CMD-SHELL", "psql -U ${DB_USER} -d ${DB_NAME} -c \"SELECT 1 FROM pg_roles WHERE rolname='repluser'\" | grep -q 1"]
+      timeout: 5s
+      retries: 5
+    ports:
+      - 25433:5432
+    networks:
+      pg-demo:
+        ipv4_address: 172.113.0.101
+    command: |
+      bash -c "
+      rm -rf /var/lib/postgresql/data/*
+      until pg_basebackup --pgdata=/var/lib/postgresql/data -R --slot=replication_slot_1  --host=primary --port=5432 --checkpoint=fast
+      do
+      echo 'Waiting for primary to connect...'
+      sleep 1s
+      done
+      echo 'Backup done, starting replica...'
+      chmod 0700 /var/lib/postgresql/data
+      postgres -c max_connections=50
+      "
+    depends_on:
+      primary:
+        condition: service_healthy
+
+  replica2:
+    image: postgres:17
+    user: postgres
+    restart: always
+    container_name: replica2
+    environment:
+      PGUSER: repluser
+      PGPASSWORD: replpass
+    volumes:
+      - replica2-data:/var/lib/postgresql/
+    healthcheck:
+      test: ["CMD-SHELL", "psql -U ${DB_USER} -d ${DB_NAME} -c \"SELECT 1 FROM pg_roles WHERE rolname='repluser'\" | grep -q 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - 35433:5432
+    networks:
+      pg-demo:
+        ipv4_address: 172.113.0.102
+    command: |
+      bash -c "
+      rm -rf /var/lib/postgresql/data/*
+      until pg_basebackup --pgdata=/var/lib/postgresql/data -R --slot=replication_slot_2  --host=primary --port=5432 --checkpoint=fast
+      do
+      echo 'Waiting for primary to connect...'
+      sleep 1s
+      done
+      echo 'Backup done, starting replica...'
+      chmod 0700 /var/lib/postgresql/data
+      postgres -c max_connections=50
+      "
+    depends_on:
+      primary:
+        condition: service_healthy
+
+  sysbench1:
+    build:
+      context: .
+      dockerfile: Dockerfile.sysbench
+    container_name: sysbench1
+    depends_on:
+      primary:
+        condition: service_healthy
+    environment:
+      DB_USER:   ${DB_USER}
+      DB_PASSWD: ${DB_PASSWD}
+      DB_NAME:   ${DB_NAME}
+      DB_HOST: primary
+      DB_PORT:   ${DB_PORT}
+      PROXY_ADMIN_USER: ${PROXYSQL_ADMIN_USER}
+      PROXY_ADMIN_PASSWD: ${PROXYSQL_ADMIN_PASSWD}
+    volumes:
+      - ./scripts/benchmark.sh:/usr/local/bin/benchmark.sh
+      - ./scripts/monitor-db-connections.sh:/usr/local/bin/monitor-db-connections.sh
+    networks:
+      pg-demo:
+        ipv4_address: 172.113.0.6
+
+  sysbench2:
+    build:
+      context: .
+      dockerfile: Dockerfile.sysbench
+    container_name: sysbench2
+    depends_on:
+      primary:
+        condition: service_healthy
+    environment:
+      DB_USER:   ${DB_USER}
+      DB_PASSWD: ${DB_PASSWD}
+      DB_NAME:   ${DB_NAME}
+      DB_HOST: primary
+      DB_PORT:   ${DB_PORT}
+      PROXY_ADMIN_USER: ${PROXYSQL_ADMIN_USER}
+      PROXY_ADMIN_PASSWD: ${PROXYSQL_ADMIN_PASSWD}
+    volumes:
+      - ./scripts/benchmark.sh:/usr/local/bin/benchmark.sh
+      - ./scripts/monitor-db-connections.sh:/usr/local/bin/monitor-db-connections.sh
+    networks:
+      pg-demo:
+        ipv4_address: 172.113.0.16
+
+  sysbench3:
+    build:
+      context: .
+      dockerfile: Dockerfile.sysbench
+    container_name: sysbench3
+    depends_on:
+      primary:
+        condition: service_healthy
+    environment:
+      DB_USER:   ${DB_USER}
+      DB_PASSWD: ${DB_PASSWD}
+      DB_NAME:   ${DB_NAME}
+      DB_HOST: primary
+      DB_PORT:   ${DB_PORT}
+      PROXY_ADMIN_USER: ${PROXYSQL_ADMIN_USER}
+      PROXY_ADMIN_PASSWD: ${PROXYSQL_ADMIN_PASSWD}
+    volumes:
+      - ./scripts/benchmark.sh:/usr/local/bin/benchmark.sh
+      - ./scripts/monitor-db-connections.sh:/usr/local/bin/monitor-db-connections.sh
+    networks:
+      pg-demo:
+        ipv4_address: 172.113.0.26
+
+  proxysql:
+    build:
+      context: .
+      dockerfile: Dockerfile.proxysql
+    container_name: proxysql
+    depends_on:
+      primary:
+        condition: service_healthy
+    environment:
+      DB_USER:   ${DB_USER}
+      DB_PASSWD: ${DB_PASSWD}
+      DB_NAME:   ${DB_NAME}
+      DB_HOST: primary
+      DB_PORT:   ${DB_PORT}
+      PROXY_ADMIN_USER: ${PROXYSQL_ADMIN_USER}
+      PROXY_ADMIN_PASSWD: ${PROXYSQL_ADMIN_PASSWD}
+    ports:
+      - "6133:6133"
+      - "6132:6132"
+    volumes:
+      - ./cnf/proxysql.cnf:/etc/proxysql.cnf
+      - proxysql-data:/var/lib/proxysql
+    networks:
+      pg-demo:
+        ipv4_address: 172.113.0.222
+
+volumes:
+  primary-data:
+  replica1-data:
+  replica2-data:
+  proxysql-data:
+  sysbench1-data:
+  sysbench2-data:
+  sysbench3-data:
+
+networks:
+  pg-demo:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.113.0.0/16

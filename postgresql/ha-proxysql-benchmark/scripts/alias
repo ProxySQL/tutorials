@@ -1,0 +1,1 @@
+alias admin='docker exec -it proxysql psql -U ${PROXYSQL_ADMIN_USER} -h ${PROXYSQL_DB_HOST} -p ${PROXYSQL_ADMIN_PORT}'

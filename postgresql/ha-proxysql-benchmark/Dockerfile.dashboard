@@ -1,0 +1,7 @@
+FROM python:3.12-slim
+WORKDIR /app
+RUN pip install --no-cache-dir flask psycopg2-binary pymysql
+COPY dashboard.py /app/dashboard.py
+COPY dashboard.html /app/dashboard.html
+EXPOSE 8080
+CMD ["python", "dashboard.py"]

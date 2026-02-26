@@ -1,0 +1,46 @@
+datadir="/var/lib/proxysql"
+
+admin_variables=
+{
+    # IMPORTANT. These are sample defaults and should be changed for your configuration.
+    admin_credentials="admin:admin;radmin:radmin"
+    pgsql_ifaces="0.0.0.0:6132"
+}
+
+pgsql_variables=
+{
+    interfaces="0.0.0.0:6133"
+    threads=2
+    max_connections=100
+    default_query_delay=0
+    default_query_timeout=36000000
+    connect_retries_on_failure=10
+    poll_timeout=2000
+    server_version="18.0"
+    connect_timeout_server=3000
+    monitor_username="proxymon"
+    monitor_password="proxymon"
+    monitor_history=600000
+    monitor_connect_interval=60000
+    monitor_connect_timeout=600
+    monitor_ping_interval=8000
+    ping_timeout_server=1000
+    commands_stats=true
+}
+
+pgsql_servers =
+(
+    { hostgroup=10, hostname="primary", port=5432, max_connections=50, comment="primary" },
+    { hostgroup=20, hostname="replica1", port=5432, max_connections=50, comment="First Replica" },
+    { hostgroup=20, hostname="replica2", port=5432, max_connections=50, comment="Second Replica" }
+)
+
+pgsql_users  =
+(
+    { username="appuser", password="appuser", default_hostgroup=10 },
+    { username="postgres", password="changeme", default_hostgroup=10 }
+)
+
+pgsql_query_rules =
+(
+)
