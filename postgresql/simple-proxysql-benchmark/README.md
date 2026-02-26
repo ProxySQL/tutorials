@@ -1,4 +1,4 @@
-# ProxySQL Tutorial 1 - Demonstrate a benchmark using ProxySQL
+# Demonstrate a PostgreSQL benchmark using ProxySQL
 
 ## Tutorial Outcomes
 1. Launch a benchmark with a PostgreSQL instance.
