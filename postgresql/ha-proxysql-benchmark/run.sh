@@ -20,10 +20,10 @@ docker exec -e DB_PORT=${DB_PORT} ${SYSBENCH_CONTAINER_NAME} /usr/local/bin/benc
 docker exec -e DB_PORT=${DB_PORT} ${SYSBENCH_CONTAINER_NAME} /usr/local/bin/benchmark.sh prepare
 
 echo "Run Benchmark Test"
-docker exec -e THREADS=5 -e RATE=100 -e DB_PORT=${DB_PORT} ${SYSBENCH_CONTAINER_NAME} /usr/local/bin/benchmark.sh run
+docker exec -e TIME=20 -e THREADS=5 -e RATE=100 -e DB_PORT=${DB_PORT} ${SYSBENCH_CONTAINER_NAME} /usr/local/bin/benchmark.sh run
 
 echo "To test using the container run"
-echo "$ docker exec -it primary bash"
+echo "$ docker exec -it ${PROXYSQL_CONTAINER_NAME} bash"
 
 echo "To exit the containers run"
 echo "$ docker compose down -v"

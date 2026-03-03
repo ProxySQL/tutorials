@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
-
-TIME=${TIME:-600}
-TEST_TYPE=${TEST_TYPE:-oltp_read_write}
-SKIP_TRX=${SKIP_TRX:-off}
-
 [[ -n "${TRACE:-}" ]] && set -x
+
+TIME=${TIME:-60}
+TEST_TYPE=${TEST_TYPE:-oltp_read_only}
+SKIP_TRX=${SKIP_TRX:-on}
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_DIR="${SCRIPT_DIR}/logs"
 mkdir -p "${LOG_DIR}"
 
-echo "Connecting via '${PROXYSQL_CONTAINER_NAME}'"
+echo "Connecting to '${PROXYSQL_CONTAINER_NAME}' for each server"
 for COUNT in $(seq 1 3); do
   RATE=$(( (RANDOM % 7) * 25 + 50 ))
   THREADS=$((RANDOM % 10 + 5))

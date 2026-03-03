@@ -30,9 +30,7 @@ pgsql_variables=
 
 pgsql_servers =
 (
-    { hostgroup=10, hostname="primary", port=5432, max_connections=50, comment="primary" },
-    { hostgroup=20, hostname="replica1", port=5432, max_connections=50, comment="First Replica" },
-    { hostgroup=20, hostname="replica2", port=5432, max_connections=50, comment="Second Replica" }
+    { hostgroup=10, hostname="primary", port=5432, max_connections=50, weight=100, comment="primary" }
 )
 
 pgsql_users  =

@@ -1,8 +1,8 @@
-# ProxySQL HA Tutorial - Demonstrate a benchmark using ProxySQL in a HA Environment
+# ProxySQL Tutorial - Demonstrate a benchmark using ProxySQL in a HA Environment
 
 ## Tutorial Outcomes
 1. Launch a HA Application and Database environment.
-2.
+2. Run different scenerios using ProxySQL.
 
 ## Pre-requisites
 - [Docker](https://docs.docker.com/desktop/)
@@ -29,6 +29,7 @@ For this setup we will use the `172.113.0/24` network with:
 
 ### For Mac OS and Linux
 
+To setup the container environment and verify the step:
 ```
 $ ./run.sh
 ```
@@ -44,52 +45,10 @@ NOTE: You may need to run `Set-ExecutionPolicy RemoteSigned` once to allow Power
 
 The prior commands will launch the setup, prepare the database for the benchmark and run a simple benchmark to verify.
 
-## Simulating Application Load (No Proxy)
+## Scenerios
 
-To emulate some random load from the three application servers to the primary DB.
-```
-$ ./run-benchmark.sh
-```
-
-This command will launch three benchmarks running for 10 minutes, with a random number of threads (5-15) and a random rate (50 - 250 in 50 increments). This will give feedback such as:
-
-```
-App Server 1: PID=7203 RATE=200 THREADS=10
-App Server 2: PID=7204 RATE=50 THREADS=8
-App Server 3: PID=7205 RATE=200 THREADS=10
-```
-
-### Monitoring the source of Database Connections
-
-By default, you will see that the `primary` receives all the traffic from the applications `.6`, `.16`, `.26`.
-```
-$ scripts/summary.sh hosts-per-db
-##### For DB 'primary' #####
-
-  client_addr  | count
----------------+-------
- 172.113.0.26  |    10
- 172.113.0.6   |    10
- 172.113.0.16  |     8
- 172.113.0.101 |     1
- 172.113.0.102 |     1
- 172.113.0.222 |     1
-(6 rows)
-
-##### For DB 'replica1' #####
-
-  client_addr  | count
----------------+-------
- 172.113.0.222 |     1
-
-##### For DB 'replica2' #####
-
-  client_addr  | count
----------------+-------
- 172.113.0.222 |     1
-```
-
-- [Read Write Splitting](READ-WRITE-SPLIT.md)
+- [Simple Application Benchmark](SIMPLE-BENCHMARK.md)
+- [Simple ProxySQL Benchmark](SIMPLE-BENCHMARK.md)
 
 ## Teardown
 
