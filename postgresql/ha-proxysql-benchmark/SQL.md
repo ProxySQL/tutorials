@@ -1,5 +1,11 @@
 # HA Tutorial SQL Statements
 
+You can view monitoring of ProxySQL via the
+
+```
+. .envrc
+docker exec -it proxysql psql -U ${PROXYSQL_ADMIN_USER} -h ${PROXYSQL_DB_HOST} -p ${PROXYSQL_ADMIN_PORT}
+```
 
 ## Insert Query Rules for SELECT traffic
 ```sql
@@ -17,6 +23,8 @@ Between each benchmark we can reset the statistics to see the actual impact of e
 ```sql
 SELECT 1 FROM stats_pgsql_connection_pool_reset LIMIT 1;
 SELECT 1 FROM stats_pgsql_query_digest_reset LIMIT 1;
+LOAD PGSQL QUERY RULES TO RUNTIME;
+
 ```
 
 ## Select Query Digests
@@ -82,5 +90,8 @@ radmin=# select hostgroup_id, hostname, status, weight from pgsql_servers;
  10           | primary  | ONLINE | 1
  20           | replica1 | ONLINE | 1
  20           | replica2 | ONLINE | 3
- 
+```
+
+```
+select * from stats_pgsql_query_rules;
 ```

@@ -47,8 +47,10 @@ The prior commands will launch the setup, prepare the database for the benchmark
 
 ## Scenerios
 
-- [Simple Application Benchmark](SIMPLE-BENCHMARK.md)
-- [Simple ProxySQL Benchmark](SIMPLE-BENCHMARK.md)
+- [Application using Primary Benchmark](APP-ONLY-BENCHMARK.md)
+- [Application using ProxySQL Benchmark](WRITE-ONLY-BENCHMARK.md)
+- [Application Read/Write Splitting Benchmark](READ-WRITE-SPLIT-BENCHMARK.md)
+- [Application Read Load Balancing Benchmark](READ-LOAD-BALANCING-BENCHMARK.md)
 
 ## Teardown
 
