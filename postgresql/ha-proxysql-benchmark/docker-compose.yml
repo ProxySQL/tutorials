@@ -194,6 +194,7 @@ services:
     ports:
       - "6133:6133"
       - "6132:6132"
+      - "6080:6080"
     volumes:
       - ./cnf/proxysql.cnf:/etc/proxysql.cnf
       - proxysql-data:/var/lib/proxysql

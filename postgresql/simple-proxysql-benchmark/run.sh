@@ -12,6 +12,9 @@ echo "Verifying docker processes"
 sleep 5
 docker compose ps
 
+echo "Configuring ProxySQL post-start settings"
+./scripts/proxysql-post-start.sh
+
 echo "Validating PostgreSQL access"
 docker exec primary psql "postgresql://${DB_USER}:${DB_PASSWD}@localhost:" -c "SELECT version();"
 
