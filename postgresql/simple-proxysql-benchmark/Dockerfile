@@ -11,19 +11,17 @@ RUN apt-get update && \
     && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Install ProxySQL from official repository
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends lsb-release wget apt-transport-https ca-certificates gnupg && \
-    wget -O - 'https://repo.proxysql.com/ProxySQL/proxysql-3.0.x/repo_pub_key' | apt-key add - && \
-    echo "deb https://repo.proxysql.com/ProxySQL/proxysql-3.0.x/$(lsb_release -sc)/ ./" | tee /etc/apt/sources.list.d/proxysql.list && \
-    apt-get update && \
-    apt-get install -y proxysql && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
-# Create ProxySQL data directory
-RUN mkdir -p /var/lib/proxysql && \
+# Create proxysql user and data directory
+RUN useradd -r -s /bin/false proxysql && \
+    mkdir -p /var/lib/proxysql && \
     chown -R proxysql:proxysql /var/lib/proxysql
+
+# Download ProxySQL binary
+RUN curl -fSL "https://repo.proxysql.com/ProxySQL/tmp/demo/proxysql.ubuntu22" -o /usr/bin/proxysql && \
+    chmod +x /usr/bin/proxysql
+
+# Download web interface plugin
+RUN curl -fSL "https://repo.proxysql.com/ProxySQL/tmp/demo/Web_Interface_plugin.so.ubuntu22" -o /var/lib/proxysql/Web_Interface_plugin.so
 
 # Configure supervisor to run ProxySQL
 COPY cnf/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
