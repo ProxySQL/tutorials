@@ -23,7 +23,7 @@ echo "Run Benchmark Test"
 docker exec -e DB_PORT=${DB_PORT} ${SYSBENCH_CONTAINER_NAME} /usr/local/bin/benchmark.sh run
 
 echo "Run Benchmark Test that fails with too many connections"
-docker exec -e THREADS=20 -e DB_PORT=${DB_PORT} ${SYSBENCH_CONTAINER_NAME} /usr/local/bin/benchmark.sh run
+docker exec -e THREADS=20 -e RATE=100 -e DB_PORT=${DB_PORT} ${SYSBENCH_CONTAINER_NAME} /usr/local/bin/benchmark.sh run
 
 echo "To test using the container run"
 echo "$ docker exec -it primary bash"

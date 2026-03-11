@@ -1,4 +1,4 @@
-# Simulating Application Load (No Proxy)
+# Simulating Application Load (With Proxy)
 
 ### Cleanup
 If you have been running other tests, you may need to cleanup database connections. See [CLEANUP.md](CLEANUP.md) before commencing benchmark.

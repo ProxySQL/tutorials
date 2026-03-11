@@ -24,7 +24,7 @@ For this setup we will use the `172.113.0/24` network with:
   - Server 2   `.16`
   - Server 3   `.26`
 - Proxy
-  - ProxySQL   `.200`
+  - ProxySQL   `.222`
 
 
 ### For Mac OS and Linux

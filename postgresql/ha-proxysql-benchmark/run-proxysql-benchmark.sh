@@ -17,3 +17,7 @@ for COUNT in $(seq 1 3); do
   docker exec -e RATE=${RATE} -e THREADS=${THREADS} -e TIME=${TIME} -e DB_CONTAINER_NAME=${PROXYSQL_CONTAINER_NAME} -e DB_PORT=${PROXYSQL_DB_PORT} -e TEST_TYPE=${TEST_TYPE} -e SKIP_TRX=${SKIP_TRX} sysbench${COUNT} /usr/local/bin/benchmark.sh run > "${LOG_DIR}/sysbench${COUNT}.log" &
   echo "App Server ${COUNT}: PID=$! RATE=${RATE} THREADS=${THREADS}"
 done
+
+echo "Waiting for all sysbench processes to complete..."
+wait
+echo "All benchmarks finished."
