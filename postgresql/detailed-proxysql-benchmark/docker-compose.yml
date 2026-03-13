@@ -1,0 +1,143 @@
+services:
+  postgresql:
+    image: postgres:18
+    container_name: postgres-bench
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWD:-changeme}
+      POSTGRES_DB: ${DB_NAME:-demo}
+    command: >
+      postgres
+      -c max_connections=2000
+      -c shared_buffers=1GB
+      -c work_mem=32MB
+      -c maintenance_work_mem=256MB
+      -c effective_cache_size=3GB
+      -c ssl=on
+      -c ssl_cert_file=/etc/postgresql/certs/server.crt
+      -c ssl_key_file=/etc/postgresql/certs/server.key
+      -c ssl_ca_file=/etc/postgresql/certs/ca.crt
+    networks:
+      - bench-net
+    volumes:
+      - ./certs/postgres:/etc/postgresql/certs:ro
+      - ./sql/init-primary.sql:/docker-entrypoint-initdb.d/00init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${DB_USER:-postgres} -d $${DB_NAME:-demo}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '8.0'
+          memory: 16G
+
+  proxysql:
+    build: 
+      context: .
+      dockerfile: Dockerfile.proxysql
+    container_name: proxysql-bench
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    networks:
+      - bench-net
+    volumes:
+      - ./cnf/proxysql.cnf:/etc/proxysql.cnf
+    ports:
+      - "6133:6133"
+      - "6132:6132"
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 2G
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+
+  proxysql-single:
+    build: 
+      context: .
+      dockerfile: Dockerfile.proxysql
+    container_name: proxysql-single-core
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    networks:
+      - bench-net
+    volumes:
+      - ./cnf/proxysql-single.cnf:/etc/proxysql.cnf
+    ports:
+      - "6134:6133"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: pgbouncer-bench
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    networks:
+      - bench-net
+    environment:
+      - DATABASE_URL=postgres://postgres:changeme@postgresql:5432/demo
+    volumes:
+      - ./cnf/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini
+      - ./cnf/userlist.txt:/etc/pgbouncer/userlist.txt
+      - ./certs/pgbouncer:/etc/pgbouncer/certs:ro
+    ports:
+      - "6432:6432"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+
+  sysbench:
+    build:
+      context: .
+      dockerfile: Dockerfile.sysbench
+    container_name: sysbench-loadgen
+    depends_on:
+      proxysql:
+        condition: service_started
+    networks:
+      - bench-net
+    environment:
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWD=${DB_PASSWD:-changeme}
+      - DB_NAME=${DB_NAME:-demo}
+      - PROXY_HOST=proxysql
+      - PROXY_PORT=6133
+      - PG_HOST=postgresql
+      - PG_PORT=5432
+    volumes:
+      - ./scripts:/usr/local/bin
+    deploy:
+      resources:
+        limits:
+          cpus: '16.0'
+          memory: 4G
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+
+networks:
+  bench-net:
+    driver: bridge

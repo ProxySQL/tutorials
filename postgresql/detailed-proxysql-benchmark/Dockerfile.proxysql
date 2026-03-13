@@ -1,0 +1,7 @@
+FROM ubuntu:22.04
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y curl postgresql-client && rm -rf /var/lib/apt/lists/*
+RUN useradd -r -s /bin/false proxysql && mkdir -p /var/lib/proxysql && chown -R proxysql:proxysql /var/lib/proxysql
+RUN curl -fSL "https://repo.proxysql.com/ProxySQL/tmp/demo/proxysql.ubuntu22" -o /usr/bin/proxysql && chmod +x /usr/bin/proxysql
+RUN curl -fSL "https://repo.proxysql.com/ProxySQL/tmp/demo/Web_Interface_plugin.so.ubuntu22" -o /var/lib/proxysql/Web_Interface_plugin.so
+CMD ["/usr/bin/proxysql", "-c", "/etc/proxysql.cnf", "--foreground"]

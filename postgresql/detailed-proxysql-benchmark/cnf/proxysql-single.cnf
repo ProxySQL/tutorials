@@ -1,0 +1,29 @@
+datadir="/var/lib/proxysql"
+
+admin_variables=
+{
+    admin_credentials="admin:admin;radmin:radmin"
+    pgsql_ifaces="0.0.0.0:6132"
+}
+
+pgsql_variables=
+{
+    interfaces="0.0.0.0:6133"
+    threads=1  # Single worker thread
+    max_connections=10000
+    server_version="18.0"
+    monitor_username="proxymon"
+    monitor_password="proxymon"
+    connect_timeout_client=20000
+}
+
+pgsql_servers =
+(
+    { hostgroup=10, hostname="postgresql", port=5432, max_connections=40, use_ssl=1, comment="primary" }
+)
+
+pgsql_users  =
+(
+    { username="appuser", password="appuser", default_hostgroup=10 },
+    { username="postgres", password="changeme", default_hostgroup=10 }
+)
