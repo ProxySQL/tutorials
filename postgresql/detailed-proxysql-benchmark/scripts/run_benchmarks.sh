@@ -16,6 +16,7 @@ usage() {
   echo "               - oltp_read_write"
   echo "               - oltp_read_only"
   echo "               - oltp_point_select"
+  echo "               - oltp_write_only"
   echo ""
   echo "Optional Arguments:"
   echo "  target_host  Default: \$PROXY_HOST (current: ${PROXY_HOST})"
@@ -29,7 +30,7 @@ usage() {
 # Check for mandatory argument and validate test type
 TEST_TYPE=$1
 case "${TEST_TYPE}" in
-  oltp_read_write|oltp_read_only|oltp_point_select)
+  oltp_read_write|oltp_read_only|oltp_point_select|oltp_write_only)
     # Valid test type
     ;;
   *)
