@@ -1,11 +1,12 @@
 # Benchmark Report: OLTP Point Select
 
 **Date:** Thursday, March 12, 2026  
-**Workload:** `oltp_point_select` (Sysbench)
+**Workload:** `oltp_point_select` (Sysbench)  
+**Proxy Configuration:** ProxySQL (both 1 and 4 thread versions) and PgBouncer are configured with a **maximum of 40 backend connections** to the database.
 
 This report compares the performance of four different PostgreSQL access layers for the highly concurrent `oltp_point_select` workload:
 1. **PostgreSQL Direct**: Baseline direct access (8 CPUs).
-2. **ProxySQL (Standard)**: Multi-threaded proxy (2 CPUs, 4 threads).
+2. **ProxySQL (Standard)**: Multi-threaded proxy (4 CPUs, 4 threads).
 3. **ProxySQL (Single Core)**: Single-threaded proxy (1 CPU, 1 thread).
 4. **PgBouncer**: Single-threaded connection pooler (1 CPU).
 
@@ -36,7 +37,12 @@ xychart-beta
     line [25534, 25296, 25116, 24689, 22264, 22601, 20383, 17055]
     line [23142, 21950, 19119, 19148, 18832, 18468, 17085, 15793]
 ```
-*(Legend: 1st line=Postgres, 2nd=ProxySQL, 3rd=ProxySQL-Single, 4th=PgBouncer)*
+
+**Legend (Order of appearance):**
+1. **PostgreSQL Direct** (Top line at low concurrency)
+2. **ProxySQL (Standard)** (Middle line, scales up at 32)
+3. **ProxySQL (Single Core)** (Bottom-middle)
+4. **PgBouncer** (Bottom-most line)
 
 ## 2. Latency Analysis (95th percentile, ms)
 
@@ -63,7 +69,12 @@ xychart-beta
     line [0.46, 1.03, 2.18, 4.25, 24.8, 69.2, 164.4, 320.1]
     line [0.45, 0.97, 2.14, 3.89, 7.84, 15.5, 35.5, 70.5]
 ```
-*(Legend: 1st line=Postgres, 2nd=ProxySQL, 3rd=ProxySQL-Single, 4th=PgBouncer)*
+
+**Legend (Order of appearance):**
+1. **PostgreSQL Direct** (Lowest latency at low concurrency)
+2. **ProxySQL (Standard)** (Scaling latency)
+3. **ProxySQL (Single Core)** (Highest latency)
+4. **PgBouncer** (Competitive with ProxySQL-Standard at high concurrency)
 
 ## Observations
 
