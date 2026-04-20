@@ -1,0 +1,14 @@
+# Minimal config for failover labs. __PORT__ and __DATA_DIR__ substituted by pg_sandbox.sh.
+port = __PORT__
+listen_addresses = '127.0.0.1'
+unix_socket_directories = '__DATA_DIR__'
+max_connections = 100
+shared_buffers = 128MB
+wal_level = replica
+max_wal_senders = 10
+max_replication_slots = 10
+hot_standby = on
+synchronous_commit = on
+log_line_prefix = '%m [%p] '
+log_min_messages = warning
+logging_collector = off

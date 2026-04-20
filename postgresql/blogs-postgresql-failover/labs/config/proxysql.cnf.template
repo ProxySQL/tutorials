@@ -1,0 +1,31 @@
+datadir="__DATA_DIR__"
+errorlog="__DATA_DIR__/proxysql.log"
+
+admin_variables=
+{
+    admin_credentials="admin:admin"
+    mysql_ifaces="127.0.0.1:6132"
+    pgsql_ifaces="127.0.0.1:6134"
+}
+
+pgsql_variables=
+{
+    threads=4
+    max_connections=1024
+    default_query_delay=0
+    default_query_timeout=36000000
+    have_ssl=false
+    poll_timeout=2000
+    interfaces="127.0.0.1:6133"
+    default_schema="information_schema"
+    server_version="15.0 (ProxySQL)"
+    connect_timeout_server=3000
+    monitor_username="monitor"
+    monitor_password="monitor"
+    monitor_history=600000
+    monitor_connect_interval=2000
+    monitor_ping_interval=1000
+    monitor_read_only_interval=1000
+    ping_interval_server_msec=10000
+    ping_timeout_server=200
+}
