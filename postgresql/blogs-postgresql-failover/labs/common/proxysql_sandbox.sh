@@ -62,17 +62,39 @@ destroy() {
 
 admin_sql() {
     local admin_port="$1" sql="$2"
-    mysql -h 127.0.0.1 -P "$admin_port" -u admin -padmin -N -B -e "$sql"
+    # ProxySQL's admin listens on two ports with the same SQL surface:
+    # 6132 speaks the MySQL wire protocol (drive with `mysql`), 6134 speaks
+    # the PostgreSQL wire protocol (drive with `psql`). Pick the client that
+    # matches the port the caller asked for.
+    case "$admin_port" in
+        6134)
+            PGPASSWORD=admin psql -h 127.0.0.1 -p "$admin_port" -U admin \
+                -v ON_ERROR_STOP=1 -A -t -F $'\t' -c "$sql"
+            ;;
+        *)
+            mysql -h 127.0.0.1 -P "$admin_port" -u admin -padmin -N -B -e "$sql"
+            ;;
+    esac
 }
 
 wait_ready() {
     local admin_port="$1" timeout="$2"
     local deadline=$((SECONDS + timeout))
     while (( SECONDS < deadline )); do
-        if mysql -h 127.0.0.1 -P "$admin_port" -u admin -padmin \
-                 -e "SELECT 1" >/dev/null 2>&1; then
-            return 0
-        fi
+        case "$admin_port" in
+            6134)
+                if PGPASSWORD=admin psql -h 127.0.0.1 -p "$admin_port" -U admin \
+                        -c "SELECT 1" >/dev/null 2>&1; then
+                    return 0
+                fi
+                ;;
+            *)
+                if mysql -h 127.0.0.1 -P "$admin_port" -u admin -padmin \
+                        -e "SELECT 1" >/dev/null 2>&1; then
+                    return 0
+                fi
+                ;;
+        esac
         sleep 0.2
     done
     echo "ERROR: ProxySQL admin on port $admin_port did not become ready in ${timeout}s" >&2

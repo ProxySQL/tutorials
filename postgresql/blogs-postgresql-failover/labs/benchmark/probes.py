@@ -64,14 +64,30 @@ def parse_show_pgsql_servers_tsv(tsv: str) -> Dict[Tuple[str, str, str], str]:
 def query_admin(
     *, host: str, port: int, user: str, password: str, sql: str,
 ) -> str:
-    """Shell out to `mysql` client against the ProxySQL admin interface."""
-    cmd = [
-        "mysql", "-h", host, "-P", str(port),
-        "-u", user, f"-p{password}",
-        "-N", "-B",  # no headers, tab-separated
-        "-e", sql,
-    ]
-    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    """Shell out to the ProxySQL admin interface.
+
+    ProxySQL's admin listens on two ports with the same SQL surface: 6132 for
+    the MySQL wire protocol, 6134 for the PostgreSQL wire protocol. We pick
+    the client that matches the port so PostgreSQL-only hosts (where `mysql`
+    may not even be installed) can still drive admin via `psql`.
+    """
+    import os
+    if port == 6134:
+        cmd = [
+            "psql", "-h", host, "-p", str(port), "-U", user,
+            "-A", "-t", "-F", "\t",  # unaligned, tuples-only, tab separator
+            "-c", sql,
+        ]
+        env = {**os.environ, "PGPASSWORD": password}
+    else:
+        cmd = [
+            "mysql", "-h", host, "-P", str(port),
+            "-u", user, f"-p{password}",
+            "-N", "-B",  # no headers, tab-separated
+            "-e", sql,
+        ]
+        env = None
+    result = subprocess.run(cmd, capture_output=True, text=True, env=env, check=False)
     if result.returncode != 0:
         raise RuntimeError(f"admin query failed: {result.stderr.strip()}")
     return result.stdout

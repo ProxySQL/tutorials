@@ -3,7 +3,8 @@ from harness import compute_summary, median_summary
 
 def test_compute_summary_computes_writes_resume_and_error_count() -> None:
     # 10 buckets of 100 ms = 1 s total.
-    # Injection at bucket 3 (300 ms). Errors in 4,5. First success after bucket 3 is bucket 6.
+    # Inject at bucket 3 (300 ms). Errors in 4,5. First success after inject
+    # is bucket 6 (absolute 600 ms), which is 300 ms AFTER the kill.
     buckets = [
         {"ok": 5, "err": 0},
         {"ok": 5, "err": 0},
@@ -18,7 +19,7 @@ def test_compute_summary_computes_writes_resume_and_error_count() -> None:
     ]
     summary = compute_summary(buckets, bucket_ms=100, inject_ms=300)
 
-    assert summary["writes_resume_ms"] == 600  # bucket 6 * 100 ms
+    assert summary["writes_resume_ms"] == 300  # 300 ms AFTER the kill
     assert summary["error_count_post_inject"] == 9
     assert summary["total_ok_pre_inject"] == 15
 
@@ -42,9 +43,29 @@ def test_compute_summary_silent_gap_no_errors() -> None:
     ]
     summary = compute_summary(buckets, bucket_ms=100, inject_ms=300)
 
-    assert summary["writes_resume_ms"] == 900  # bucket 9 * 100 ms
+    assert summary["writes_resume_ms"] == 600  # 600 ms AFTER the kill
     assert summary["error_count_post_inject"] == 0
     assert summary["total_ok_pre_inject"] == 15
+
+
+def test_compute_summary_mixed_bucket_is_not_recovery() -> None:
+    # Retry-driver shape: the kill-bucket carries both the pre-kill tail of ok
+    # commits and the client errors. Without the err==0 gate, the harness would
+    # label that mixed bucket as recovery even though writes then stall for the
+    # real failover window.
+    buckets = [
+        {"ok": 5, "err": 0},
+        {"ok": 5, "err": 0},
+        {"ok": 5, "err": 0},
+        {"ok": 5, "err": 0},   # inject_ms=300
+        {"ok": 3, "err": 5},   # mixed: pre-kill tail + kill errors — NOT recovery
+        {"ok": 0, "err": 0},   # real failover gap begins
+        {"ok": 0, "err": 0},
+        {"ok": 4, "err": 0},   # real recovery
+        {"ok": 5, "err": 0},
+    ]
+    summary = compute_summary(buckets, bucket_ms=100, inject_ms=300)
+    assert summary["writes_resume_ms"] == 400  # 400 ms AFTER the kill
 
 
 def test_compute_summary_no_disruption_returns_minus_one() -> None:
@@ -86,7 +107,7 @@ def test_compute_summary_renames_resume_key_via_metric_label() -> None:
 
     assert "reads_resume_ms" in summary
     assert "writes_resume_ms" not in summary
-    assert summary["reads_resume_ms"] == 500
+    assert summary["reads_resume_ms"] == 200  # 200 ms AFTER the kill
     assert summary["error_count_post_inject"] == 0
     assert summary["total_ok_pre_inject"] == 15
 

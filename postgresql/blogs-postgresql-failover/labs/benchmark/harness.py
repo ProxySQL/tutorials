@@ -22,15 +22,16 @@ def compute_summary(
     total_ok_pre = sum(b["ok"] for b in pre)
     errors_post = sum(b["err"] for b in post)
 
-    # Writes-resume: time of first bucket where writes have come back *after* a
-    # disruption. A disruption is the first post-inject bucket with ok==0 OR
-    # err>0. Recovery is the next bucket with ok>0.
+    # Writes-resume: ms *after the kill* until writes come back — the real
+    # failover window.  Recovery is the first post-inject bucket with ok>0
+    # **and** err==0 following any bucket with ok==0 or err>0.  The err==0
+    # guard skips transitional buckets that carry both the pre-kill tail of
+    # commits and the error storm, which would otherwise be miscounted as
+    # recovery before the real failover window had even begun.
     #
-    # The previous definition ("first post-inject bucket with ok>0 AND err==0")
-    # was wrong when (a) inject takes longer than one bucket to actually break
-    # writes, or (b) pgbench retries silently and never surfaces an err. Both
-    # apply to the unplanned-failover lab — so the previous metric just returned
-    # inject_ms+bucket_ms regardless of real recovery time.
+    # Returned value is the offset from inject_ms, not the absolute trial
+    # time — "writes resumed 1300 ms after the kill" is what readers want.
+    # Sentinel -1 means no disruption was ever observed.
     writes_resume_ms = -1
     disruption_offset = None
     for offset, b in enumerate(post[1:], start=1):
@@ -40,8 +41,8 @@ def compute_summary(
 
     if disruption_offset is not None:
         for offset in range(disruption_offset, len(post)):
-            if post[offset]["ok"] > 0:
-                writes_resume_ms = (inject_idx + offset) * bucket_ms
+            if post[offset]["ok"] > 0 and post[offset]["err"] == 0:
+                writes_resume_ms = offset * bucket_ms
                 break
 
     return {
@@ -88,6 +89,16 @@ def build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--trials", type=int, default=3)
     p.add_argument("--metric-label", default="writes",
                    help="Resume-time JSON key prefix; e.g. 'writes' or 'reads'.")
+    p.add_argument("--driver", choices=["pgbench", "python"], default="pgbench",
+                   help="Workload driver. 'python' uses driver_py.py which "
+                        "reconnects+retries on backend errors (needed when "
+                        "measuring failover through ProxySQL).")
+    p.add_argument("--proxysql-log", type=Path, default=None,
+                   help="Path to ProxySQL error log; copied into each trial dir after pgbench exits.")
+    p.add_argument("--pre-trial-cmd", default="",
+                   help="Shell command run after bring-up, before pgbench starts (e.g. snapshot pg_stat_database).")
+    p.add_argument("--post-trial-cmd", default="",
+                   help="Shell command run after pgbench exits (e.g. snapshot pg_stat_database again).")
     p.add_argument("--out", type=Path, required=True)
     return p
 
@@ -97,7 +108,7 @@ def main(argv: list[str] | None = None) -> int:
     import threading
     import time
 
-    from pgbench_driver import build_pgbench_cmd, bucket_log
+    from pgbench_driver import build_pgbench_cmd, bucket_logs
     from probes import (
         parse_connection_pool_tsv,
         parse_show_pgsql_servers_tsv,
@@ -118,16 +129,37 @@ def main(argv: list[str] | None = None) -> int:
         trial_dir.mkdir(exist_ok=True)
         log_prefix = str(trial_dir / "pgbench")
 
-        cmd = build_pgbench_cmd(
-            host=args.pgbench_host, port=args.pgbench_port,
-            db=args.pgbench_db, user=args.pgbench_user,
-            duration=args.duration, clients=args.clients, jobs=args.jobs,
-            script=args.script, log_prefix=log_prefix,
-        )
+        if args.driver == "python":
+            driver_py = str(Path(__file__).parent / "driver_py.py")
+            cmd = [
+                "python3", driver_py,
+                "--host", args.pgbench_host,
+                "--port", str(args.pgbench_port),
+                "--user", args.pgbench_user,
+                "--db", args.pgbench_db,
+                "--clients", str(args.clients),
+                "--duration", str(args.duration),
+                "--log-prefix", log_prefix,
+            ]
+        else:
+            cmd = build_pgbench_cmd(
+                host=args.pgbench_host, port=args.pgbench_port,
+                db=args.pgbench_db, user=args.pgbench_user,
+                duration=args.duration, clients=args.clients, jobs=args.jobs,
+                script=args.script, log_prefix=log_prefix,
+            )
+
+        if args.pre_trial_cmd:
+            subprocess.run(
+                args.pre_trial_cmd, shell=True, check=False,
+                env={**__import__("os").environ, "TRIAL_DIR": str(trial_dir), "PHASE": "pre"},
+            )
 
         start_epoch_s = int(time.time())
         start_epoch_us = start_epoch_s * 1_000_000
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        pgbench_stdout = open(trial_dir / "pgbench_stdout.txt", "w")
+        pgbench_stderr = open(trial_dir / "pgbench_stderr.txt", "w")
+        proc = subprocess.Popen(cmd, stdout=pgbench_stdout, stderr=pgbench_stderr)
 
         probe_rows: List[Dict[str, int]] = []
         stop = {"flag": False}
@@ -179,11 +211,29 @@ def main(argv: list[str] | None = None) -> int:
         proc.wait()
         stop["flag"] = True
         poller.join(timeout=2)
+        pgbench_stdout.close()
+        pgbench_stderr.close()
 
-        log_file = next(trial_dir.glob("pgbench.*")) if list(trial_dir.glob("pgbench.*")) else None
-        if log_file is None:
-            raise RuntimeError("pgbench produced no log; check stderr above")
-        buckets = bucket_log(log_file, start_epoch_us=start_epoch_us, bucket_ms=100)
+        if args.proxysql_log and args.proxysql_log.exists():
+            import shutil
+            shutil.copy(args.proxysql_log, trial_dir / "proxysql.log")
+
+        if args.post_trial_cmd:
+            subprocess.run(
+                args.post_trial_cmd, shell=True, check=False,
+                env={**__import__("os").environ, "TRIAL_DIR": str(trial_dir), "PHASE": "post"},
+            )
+
+        # pgbench with -j N writes one log file per worker thread:
+        # pgbench.<PID>, pgbench.<PID>.1, ..., pgbench.<PID>.N-1. Aggregate all.
+        import re
+        log_files = sorted(
+            f for f in trial_dir.glob("pgbench.*")
+            if re.fullmatch(r"pgbench\.\d+(\.\d+)?", f.name)
+        )
+        if not log_files:
+            raise RuntimeError("pgbench produced no log; check pgbench_stderr.txt")
+        buckets = bucket_logs(log_files, start_epoch_us=start_epoch_us, bucket_ms=100)
 
         # Merge pgbench error buckets into probe rows by aligning on t_ms.
         merged: List[Dict[str, int]] = []

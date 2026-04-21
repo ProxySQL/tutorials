@@ -13,9 +13,12 @@ mkdir -p "$BASE"
 "$COMMON/pg_sandbox.sh" init-replica "$BASE/replica-2" 5435 5433
 
 "$COMMON/proxysql_sandbox.sh" start "$BASE/proxysql" "$PROXYSQL_BIN"
-"$COMMON/proxysql_sandbox.sh" wait-ready 6132 15
+"$COMMON/proxysql_sandbox.sh" wait-ready 6134 15
 
-ADM="$COMMON/proxysql_sandbox.sh admin-sql 6132"
+# Truncate proxysql.log so each trial starts clean (see run.sh --proxysql-log).
+: > "$BASE/proxysql/proxysql.log"
+
+ADM="$COMMON/proxysql_sandbox.sh admin-sql 6134"
 
 # Clear any stale state (handles repeated bring-ups without a full destroy).
 $ADM "DELETE FROM pgsql_servers;"

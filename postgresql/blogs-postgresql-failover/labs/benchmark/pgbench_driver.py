@@ -37,25 +37,36 @@ def bucket_log(
     start_epoch_us: int,
     bucket_ms: int = 100,
 ) -> List[Dict[str, int]]:
-    """Return a list of buckets indexed by 100ms offsets from start_epoch_us.
+    """Single-log variant (kept for callers/tests). Prefer bucket_logs."""
+    return bucket_logs([log_path], start_epoch_us=start_epoch_us, bucket_ms=bucket_ms)
 
+
+def bucket_logs(
+    log_paths: List[Path],
+    start_epoch_us: int,
+    bucket_ms: int = 100,
+) -> List[Dict[str, int]]:
+    """Aggregate bucket counts across one or more pgbench log files.
+
+    pgbench -j N writes one log per worker thread; we need all of them.
     Each bucket is {'ok': n_ok, 'err': n_err}.
     """
     bucket_us = bucket_ms * 1_000
     buckets: Dict[int, Dict[str, int]] = {}
-    with log_path.open() as f:
-        for line in f:
-            rec = parse_log_line(line)
-            if rec is None:
-                continue
-            idx = (rec.epoch_us - start_epoch_us) // bucket_us
-            if idx < 0:
-                continue
-            b = buckets.setdefault(int(idx), {"ok": 0, "err": 0})
-            if rec.ok:
-                b["ok"] += 1
-            else:
-                b["err"] += 1
+    for log_path in log_paths:
+        with log_path.open() as f:
+            for line in f:
+                rec = parse_log_line(line)
+                if rec is None:
+                    continue
+                idx = (rec.epoch_us - start_epoch_us) // bucket_us
+                if idx < 0:
+                    continue
+                b = buckets.setdefault(int(idx), {"ok": 0, "err": 0})
+                if rec.ok:
+                    b["ok"] += 1
+                else:
+                    b["err"] += 1
     if not buckets:
         return []
     max_idx = max(buckets.keys())

@@ -8,6 +8,7 @@ BASE_OUT="$SCRIPT_DIR/out/$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$BASE_OUT"
 
 INJECT_CHAIN="$SCRIPT_DIR/inject.sh && sleep 1 && $SCRIPT_DIR/promote.sh"
+PGSTAT_CMD="$SCRIPT_DIR/pg_stat_snapshot.sh"
 
 trap "$SCRIPT_DIR/tear-down.sh" EXIT
 
@@ -25,13 +26,17 @@ for trial in 1 2 3; do
     python3 "$HARNESS/harness.py" \
         --pgbench-host 127.0.0.1 --pgbench-port 6133 \
         --pgbench-db pgbench --pgbench-user app \
-        --admin-host 127.0.0.1 --admin-port 6132 \
+        --admin-host 127.0.0.1 --admin-port 6134 \
         --admin-user admin --admin-password admin \
         --script "$SCRIPT_DIR/workload.sql" \
         --duration 90 --warmup 30 --inject-at 30 \
         --inject-cmd "$INJECT_CHAIN" \
         --writer-hg 10 \
         --trials 1 \
+        --driver python \
+        --proxysql-log "$SCRIPT_DIR/data/proxysql/proxysql.log" \
+        --pre-trial-cmd  "$PGSTAT_CMD" \
+        --post-trial-cmd "$PGSTAT_CMD" \
         --out "$TRIAL_OUT"
 done
 

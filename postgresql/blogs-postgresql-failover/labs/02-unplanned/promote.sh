@@ -8,7 +8,7 @@ BASE="$SCRIPT_DIR/data"
 
 pg_ctl -D "$BASE/replica-1" promote
 
-ADM="$COMMON/proxysql_sandbox.sh admin-sql 6132"
+ADM="$COMMON/proxysql_sandbox.sh admin-sql 6134"
 
 # Move the new primary (5434) into the writer hostgroup (10).
 # pgsql_replication_hostgroups with check_type=read_only will also flip this based on
